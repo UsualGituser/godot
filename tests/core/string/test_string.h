@@ -1938,6 +1938,31 @@ TEST_CASE("[Stress][String] Empty via `is_empty()`") {
 		}
 	}
 }
+
+TEST_CASE("[String] punycode on ASCII strings") {
+	//strings that should stay the same
+	Vector<String> strs = {"", "a", "1", "Z", " ", "1a", "123456789", "abcd 123 acbd", "    ", "~ adddddddd"};
+	for (const String& str: strs) {
+		CHECK_EQ(str.punycode_encode(), str);
+	}
+}
+
+TEST_CASE("[String] punycode on non-ASCII strings") {
+	//test IDN TLDs
+	Vector<String> strs = {U"إختبار", U"آزمایشی", U"测试", U"測試", U"испытание", U"परीक्षा", U"δοκιμή", U"테스트", U"טעסט", U"テスト", U"பரிட்சை"};
+	Vector<String> decoded_strs = {"xn--kgbechtv", "xn--hgbk6aj7f53bba", "xn--0zwm56d", "xn--g6w251d", "xn--80akhbyknj4f", "xn--11b5bs3a9aj6g", "xn--jxalpdlp", "xn--9t4b11yi5a",
+	"xn--deba0ad", "xn--zckzah", "xn--hlcj6aya9esc7a"};
+	for (int i = 0; i < strs.size(); ++i) {
+		CHECK_EQ(strs[i].punycode_encode(), decoded_strs[i]);
+	}
+
+	//ASCII + non-ASCII symbols
+	strs = {U"ülfter", U"lüfter", U"lfterü", U"lfter-ü"};
+	decoded_strs = {"xn--lfter-jva", "xn--lfter-kva", "xn--lfter-ova", "xn--lfter--8ya"};
+	for (int i = 0; i < strs.size(); ++i) {
+		CHECK_EQ(strs[i].punycode_encode(), decoded_strs[i]);
+	}
+}
 } // namespace TestString
 
 #endif // TEST_STRING_H

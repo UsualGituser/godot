@@ -49,6 +49,7 @@ Error HTTPClientTCP::connect_to_host(const String &p_host, int p_port, Ref<TLSOp
 	ip_candidates.clear();
 
 	String host_lower = conn_host.to_lower();
+
 	if (host_lower.begins_with("http://")) {
 		conn_host = conn_host.substr(7, conn_host.length() - 7);
 		tls_options.unref();
@@ -58,6 +59,12 @@ Error HTTPClientTCP::connect_to_host(const String &p_host, int p_port, Ref<TLSOp
 		}
 		conn_host = conn_host.substr(8, conn_host.length() - 8);
 	}
+
+	Vector<String> dot_split_url = conn_host.split(".");
+	for (String& str: dot_split_url) {
+		str = str.punycode_encode();
+	}
+	conn_host = String(".").join(dot_split_url);
 
 	ERR_FAIL_COND_V(tls_options.is_valid() && tls_options->is_server(), ERR_INVALID_PARAMETER);
 	ERR_FAIL_COND_V_MSG(tls_options.is_valid() && !StreamPeerTLS::is_available(), ERR_UNAVAILABLE, "HTTPS is not available in this build.");

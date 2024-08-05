@@ -4564,6 +4564,100 @@ String String::uri_decode() const {
 	return String::utf8(res);
 }
 
+String String::punycode_encode() const {
+	String out;
+
+	// Bootstring algorithm parameters for punycode encoding
+	size_t TMIN = 1;
+	size_t TMAX = 26;
+	size_t BASE = 36;
+	size_t SKEW = 38;
+	size_t DAMP = 700;
+	size_t INITIAL_N = 128;
+	size_t INITIAL_BIAS = 72;
+
+
+	size_t b, h;
+	size_t delta, bias;
+	size_t m, n;
+	size_t idx;
+	uint32_t o;
+
+	for (idx = 0; idx < length(); idx++ ) {
+		if (operator[](idx) < 128) {
+			out += operator[](idx);
+		}
+	}
+
+	if (out.length() == length()) {
+		return *this;
+	}
+
+	b = h = MAX(out.length(), 0);
+
+	if (h > 0) {
+		out += '-';
+	}
+
+	n = INITIAL_N;
+	bias = INITIAL_BIAS;
+	delta = 0;
+
+	for (; h < length(); n++, delta++) {
+		for (m = SIZE_MAX, idx = 0; idx < length(); idx++)
+		{
+			if(operator[](idx) >= n && operator[](idx) < m)
+			{
+				m = operator[](idx);
+			}
+		}
+
+		delta += (m - n)*(h + 1);
+		n = m;
+		for (idx = 0; idx < length(); ++idx)
+		{
+			if (operator[](idx) < n) {
+				++delta;
+			} else if (operator[](idx) == n) {
+				size_t i, k, q, t;
+				k = BASE;
+				q = delta;
+
+				while (true) {
+					if (k <= bias) {
+						t = TMIN;
+					} else if (k >= bias + TMAX) {
+						t = TMAX;
+					} else {
+						t = k - bias;
+					}
+
+					if (q < t) {
+						break;
+					}
+
+					out += (t + (q - t) % (BASE - t)) > 25 ? (t + (q - t) % (BASE - t)) + 22 :
+														   (t + (q - t) % (BASE - t)) + 'a';
+
+					q = (q - t) / (BASE - t);
+					k += BASE;
+				}
+				out += q > 25 ? q + 22 : q + 'a';
+				delta /= h == b ? DAMP : 2;
+				delta += delta / (h + 1);
+
+				for (o = 0; delta > ((BASE - TMIN) * TMAX) / 2; o += BASE) {
+					delta /= (BASE - TMIN);
+				}
+				bias =  o + (((BASE - TMIN + 1) * delta) / (delta + SKEW));
+				delta = 0;
+				h++;
+			}
+		}
+	}
+	return "xn--" + out;
+}
+
 String String::c_unescape() const {
 	String escaped = *this;
 	escaped = escaped.replace("\\a", "\a");
